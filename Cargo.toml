@@ -1,0 +1,19 @@
+[package]
+name = "rig-extra"
+version = "0.0.0"
+edition = "2024"
+
+[[example]]
+name = "routing"
+required-features = []
+
+[dependencies]
+rig-core = "0.12.0"
+serde = { version = "1.0.219", features = ["derive"] }
+thiserror = "2.0.12"
+tracing = "0.1.41"
+
+[dev-dependencies]
+anyhow = "1.0.98"
+rig-core = { version = "0.12.0", features = ["derive"] }
+tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros"] }
