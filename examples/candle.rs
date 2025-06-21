@@ -7,7 +7,7 @@ async fn main() {
     let client: Client<Mistral> = rig_extra::providers::candle::completion::Client::from_env();
 
     let agent = client
-        .agent("mistralai/Mistral-7B-v0.1")
+        .agent("mistralai/Mistral-7B-Instruct-v0.2")
         .preamble("You are a helpful assistant")
         .build();
 

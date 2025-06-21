@@ -373,16 +373,10 @@ where
         };
         println!("Loading text generator...");
         let text_generation = TextGeneration::from(self);
-        let prompt = request.chat_history.into_iter().last().unwrap();
-        let Message::User { content } = prompt else {
-            panic!("couldn't get user message");
-        };
-        let UserContent::Text(Text { text }) = content.into_iter().last().unwrap() else {
-            panic!("User message was not text");
-        };
+        let prompt = convert_messages_to_mistral_compat(request.preamble, request.chat_history);
 
         println!("Running text generator...");
-        let response = text_generation.run(text, max_tokens);
+        let response = text_generation.run(prompt, max_tokens);
 
         response.try_into()
     }
@@ -440,7 +434,7 @@ where
         let repo = api.repo(Repo::with_revision(
             model.to_string(),
             RepoType::Model,
-            "7231864981174d9bee8c7687c24c8344414eae6b".to_string(),
+            "main".to_string(),
         ));
 
         let tokenizer = {
@@ -479,5 +473,47 @@ impl CandleModel for Mistral {
 
     fn forward(&mut self, input_ids: &Tensor, seqlen_offset: usize) -> candle_core::Result<Tensor> {
         self.forward(input_ids, seqlen_offset)
+    }
+}
+
+fn convert_messages_to_mistral_compat(
+    premable: Option<String>,
+    messages: OneOrMany<Message>,
+) -> String {
+    let mut str = premable.unwrap_or_default();
+    let messages = messages
+        .into_iter()
+        .map(convert_message_to_mistral)
+        .collect::<Vec<String>>()
+        .join("\n");
+    str.push('\n');
+    str.push_str(&messages);
+    str.push_str("\n<|assistant|>");
+
+    str
+}
+
+fn convert_message_to_mistral(message: Message) -> String {
+    match message {
+        Message::User { content } => content
+            .into_iter()
+            .map(|x| match x {
+                UserContent::Text(Text { text }) => format!("<|user|>{text}"),
+                _ => unimplemented!(
+                    "Only text messages are supported for local Candle models currently!"
+                ),
+            })
+            .collect::<Vec<String>>()
+            .join("\n"),
+        Message::Assistant { content } => content
+            .into_iter()
+            .map(|x| match x {
+                AssistantContent::Text(Text { text }) => format!("<|assistant|>\n{text}"),
+                _ => unimplemented!(
+                    "Only text messages are supported for local Candle models currently!"
+                ),
+            })
+            .collect::<Vec<String>>()
+            .join("\n"),
     }
 }
