@@ -1,9 +1,10 @@
+use rig::client::ProviderClient;
 use rig::{client::completion::CompletionClientDyn, completion::Prompt};
-use rig_extra::providers::candle::{Mistral, candle::Client};
+use rig_extra::providers::candle::{Mistral, completion::Client};
 
 #[tokio::main]
 async fn main() {
-    let client: Client<Mistral> = rig_extra::providers::candle::candle::Client::new("1234");
+    let client: Client<Mistral> = rig_extra::providers::candle::completion::Client::from_env();
 
     let agent = client
         .agent("mistralai/Mistral-7B-v0.1")

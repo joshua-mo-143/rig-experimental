@@ -240,6 +240,7 @@ where
             }
 
             if let Some(t) = self.tokenizer.next_token(next_token).unwrap() {
+                println!("Found token: {t}");
                 string.push_str(&t);
             }
         }
@@ -310,14 +311,21 @@ pub fn hub_load_safetensors(
 
 #[derive(Debug, Clone)]
 pub struct Client<T> {
-    api_key: String,
+    api_key: Option<String>,
     model_ty: PhantomData<T>,
 }
 
 impl<T> Client<T> {
     pub fn new(api_key: &str) -> Self {
         Self {
-            api_key: api_key.to_string(),
+            api_key: Some(api_key.to_string()),
+            model_ty: PhantomData,
+        }
+    }
+
+    pub fn no_api_key() -> Self {
+        Self {
+            api_key: None,
             model_ty: PhantomData,
         }
     }
@@ -328,8 +336,7 @@ where
     T: CandleModel + Clone + std::fmt::Debug + Send + Sync + 'static,
 {
     fn from_env() -> Self {
-        let api_key = std::env::var("HUGGINGFACE_API_KEY")
-            .expect("HUGGINGFACE_API_KEY (HuggingFace API key) to exist as env var");
+        let api_key = std::env::var("HUGGINGFACE_API_KEY").ok();
 
         Self {
             api_key,
@@ -364,6 +371,7 @@ where
         } else {
             1024
         };
+        println!("Loading text generator...");
         let text_generation = TextGeneration::from(self);
         let prompt = request.chat_history.into_iter().last().unwrap();
         let Message::User { content } = prompt else {
@@ -373,6 +381,7 @@ where
             panic!("User message was not text");
         };
 
+        println!("Running text generator...");
         let response = text_generation.run(text, max_tokens);
 
         response.try_into()
@@ -424,14 +433,14 @@ where
     type CompletionModel = CompletionModel<T>;
     fn completion_model(&self, model: &str) -> Self::CompletionModel {
         let api = ApiBuilder::new()
-            .with_token(Some(self.api_key.clone()))
+            .with_token(self.api_key.clone())
             .build()
             .expect("to successfully build the HuggingFace API client");
 
         let repo = api.repo(Repo::with_revision(
             model.to_string(),
             RepoType::Model,
-            "latest".to_string(),
+            "7231864981174d9bee8c7687c24c8344414eae6b".to_string(),
         ));
 
         let tokenizer = {
