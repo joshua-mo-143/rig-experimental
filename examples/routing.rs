@@ -57,7 +57,7 @@ async fn main() -> Result<(), anyhow::Error> {
         Some(tag) => {
             tracing::info!("Route found: {}", tag);
         }
-        None => {
+        _ => {
             tracing::info!("No suitable route found.");
         }
     }
@@ -71,7 +71,7 @@ async fn main() -> Result<(), anyhow::Error> {
         Some(response) => {
             tracing::info!("GPT-4o: {response}");
         }
-        None => {
+        _ => {
             tracing::info!("No suitable route found.");
         }
     }

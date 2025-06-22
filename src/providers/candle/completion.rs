@@ -196,7 +196,7 @@ where
 
         let eos_token = match self.tokenizer.get_token("</s>") {
             Some(token) => token,
-            None => panic!("cannot find the </s> token"),
+            _ => panic!("cannot find the </s> token"),
         };
 
         let mut string = String::new();
