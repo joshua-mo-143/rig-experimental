@@ -1,3 +1,6 @@
+//! This module provides an abstraction for semantic routing.
+//!
+//! Example usage can be found in the `routing` example on the repository: <https://github.com/joshua-mo-143/rig-extra/blob/main/examples/routing.rs>
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -8,11 +11,15 @@ use rig::{
     vector_store::VectorStoreIndex,
 };
 
+/// The core semantic router abstraction.
+/// Contains a vector store index and a cosine similarity score threshold.
 pub struct SemanticRouter<V> {
     store: V,
     threshold: f64,
 }
 
+/// An abstraction over [`SemanticRouter`] that additionally contains Rig agents.
+/// Currently, each agent must be of the same completion model.
 pub struct SemanticRouterWithAgents<V, M: CompletionModel> {
     store: V,
     threshold: f64,
@@ -20,6 +27,7 @@ pub struct SemanticRouterWithAgents<V, M: CompletionModel> {
 }
 
 impl<V> SemanticRouter<V> {
+    /// Create an instance of [`SemanticRouterBuilder`].
     pub fn builder() -> SemanticRouterBuilder<V> {
         SemanticRouterBuilder::new()
     }
@@ -62,25 +70,92 @@ where
     V: VectorStoreIndex,
     M: CompletionModel,
 {
-    pub async fn prompt(&self, query: &str) -> Option<String> {
-        let res = self.store.top_n(query, 1).await.ok()?;
-        let (score, _, SemanticRoute { tag }) = res.first()?;
+    /// P
+    pub async fn prompt<R>(&self, query: R) -> Result<Option<String>, Box<dyn std::error::Error>>
+    where
+        R: Into<RouterRequest>,
+    {
+        let RouterRequest { query, turns } = query.into();
+        let res = self.store.top_n(&query, 1).await?;
+        let (score, _, SemanticRoute { tag }) = if let Some(result) = res.first() {
+            result
+        } else {
+            return Ok(None);
+        };
 
         if *score < self.threshold {
-            return None;
+            return Ok(None);
         }
 
         let Some(agent) = self.agents.get(tag) else {
             panic!("Couldn't find an agent that exists at tag: {tag}");
         };
 
-        let res = agent.prompt(query).await.unwrap();
-        Some(res)
+        let res = if turns > 0 {
+            agent
+                .prompt(query)
+                .multi_turn(turns as usize)
+                .await
+                .unwrap()
+        } else {
+            agent.prompt(query).await.unwrap()
+        };
+
+        Ok(Some(res))
     }
 
     pub fn agent(mut self, route: &str, agent: Agent<M>) -> Self {
         self.agents.insert(route.to_string(), agent);
         self
+    }
+}
+
+pub struct RouterRequest {
+    query: String,
+    turns: u64,
+}
+
+impl RouterRequest {
+    pub fn new(query: String) -> Self {
+        Self::from(query)
+    }
+
+    pub fn with_turns(mut self, turns: u64) -> Self {
+        self.turns = turns;
+        self
+    }
+}
+
+impl From<String> for RouterRequest {
+    fn from(value: String) -> Self {
+        Self {
+            query: value,
+            turns: 0,
+        }
+    }
+}
+
+impl From<&str> for RouterRequest {
+    fn from(value: &str) -> Self {
+        Self {
+            query: value.to_string(),
+            turns: 0,
+        }
+    }
+}
+
+impl From<(String, u64)> for RouterRequest {
+    fn from((query, turns): (String, u64)) -> Self {
+        Self { query, turns }
+    }
+}
+
+impl From<(&str, u64)> for RouterRequest {
+    fn from((query, turns): (&str, u64)) -> Self {
+        Self {
+            query: query.to_string(),
+            turns,
+        }
     }
 }
 

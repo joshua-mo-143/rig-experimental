@@ -68,7 +68,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Use the new SemanticRouterWithAgents to select the route and find a query.
     match semantic_router.prompt(query).await {
-        Some(response) => {
+        Ok(Some(response)) => {
             tracing::info!("GPT-4o: {response}");
         }
         _ => {

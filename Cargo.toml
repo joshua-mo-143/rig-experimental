@@ -4,6 +4,18 @@ version = "0.0.0"
 edition = "2024"
 
 [[example]]
+name = "candle"
+required-features = []
+
+[[example]]
+name = "elevenlabs"
+required-features = []
+
+[[example]]
+name = "openai_rt"
+required-features = []
+
+[[example]]
 name = "routing"
 required-features = []
 
@@ -22,13 +34,17 @@ candle-transformers = { version = "0.9.1", optional = true }
 hf-hub = { version = "0.4.2", optional = true }
 tokenizers = { version = "0.21.1", optional = true }
 serde_json = { version = "1.0.140", optional = true }
+futures = "0.3.31"
+bytes = "1.10.1"
+reqwest = { version = "0.12.20", features = ["json"], optional = true }
 
 [dev-dependencies]
 rig-core = { version = "0.13.0", features = ["derive"] }
 tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros"] }
 
 [features]
-default = ["candle"]
+default = ["providers"]
+providers = ["candle", "elevenlabs", "openai_realtime"]
 candle = [
     "dep:candle-core",
     "dep:candle-nn",
@@ -37,3 +53,5 @@ candle = [
     "dep:tokenizers",
     "dep:serde_json",
 ]
+elevenlabs = ["rig-core/audio", "dep:reqwest"]
+openai_realtime = ["dep:reqwest", "dep:reqwest-websocket"]
