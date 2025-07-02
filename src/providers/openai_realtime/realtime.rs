@@ -1,6 +1,6 @@
 use futures::{SinkExt, StreamExt, stream::BoxStream};
 use reqwest_websocket::Message;
-use rig::providers::openai::{InputAudio, ToolDefinition};
+use rig::providers::openai::ToolDefinition;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{self, Sender};
 
@@ -29,6 +29,12 @@ impl RealtimeVoiceRequest {
     pub fn session_data(mut self, session: Session) -> Self {
         self.session = Some(session);
         self
+    }
+
+    pub fn with_session(session: Session) -> Self {
+        Self {
+            session: Some(session),
+        }
     }
 }
 
@@ -100,6 +106,12 @@ impl RealtimeVoice for RealtimeModel {
             })
             .boxed();
 
+        if let Some(session) = req.session {
+            tx.send(InputEvent::update_session(session))
+                .await
+                .expect("If this closes, there was a malformed JSON object sent to OpenAI");
+        }
+
         Ok((tx, mapped_stream))
     }
 }
@@ -156,6 +168,7 @@ pub enum InputEventKind {
     /// Append audio input. Takes a Base64 encoded set of bytes.
     #[serde(rename = "input_audio_buffer.append")]
     AppendAudioInput { audio: String },
+    /// Update a session. Note that only fields with Some will be updated - anything else will be left blank.
     #[serde(rename = "session.update")]
     UpdateSession { session: Session },
 }
@@ -206,7 +219,7 @@ pub enum ReceivedItemEventKind {
 pub const GPT_4O_REALTIME_PREVIEW_20250603: &str = "gpt-4o-realtime-preview-2025-06-03";
 
 /// OpenAI's realtime API session data. You can use this to update the realtime session at any time.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Session {
     /// The modality you want to use. Can either be text or audio (and you can have both in the same vec!)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -217,6 +230,9 @@ pub struct Session {
     /// The OpenAI voice you want to use.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voice: Option<String>,
+    /// Turn detection. Instead of manually committing, this allows OpenAI to just figure it out for you.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub turn_detection: Option<TurnDetection>,
     /// The input audio format to be used.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input_audio_format: Option<AudioFormat>,
@@ -233,23 +249,8 @@ pub struct Session {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
     /// Playback speed.
-    pub speed: f64,
-}
-
-impl Default for Session {
-    fn default() -> Self {
-        Self {
-            modalities: None,
-            instructions: None,
-            voice: None,
-            input_audio_format: None,
-            output_audio_format: None,
-            input_audio_transcription: None,
-            tools: None,
-            temperature: None,
-            speed: 1.0,
-        }
-    }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f64>,
 }
 
 impl Session {
@@ -261,6 +262,101 @@ impl Session {
         self.voice = Some(voice.to_string());
         self
     }
+
+    pub fn turn_detection(mut self, cfg: TurnDetection) -> Self {
+        self.turn_detection = Some(cfg);
+        self
+    }
+
+    pub fn input_audio_format(mut self, format: AudioFormat) -> Self {
+        self.input_audio_format = Some(format);
+        self
+    }
+
+    pub fn output_audio_format(mut self, format: AudioFormat) -> Self {
+        self.output_audio_format = Some(format);
+        self
+    }
+
+    pub fn modalities(mut self, arr: Vec<Modality>) -> Self {
+        self.modalities = Some(arr);
+        self
+    }
+
+    pub fn speed(mut self, speed: f64) -> Self {
+        self.speed = Some(speed);
+        self
+    }
+}
+
+/// Turn detection config.
+/// If you don't want to configure manual audio commits, this is a useful convenience method for having OpenAI do it entirely for you.
+/// Instead of manually committing, you simply append audio inputs and OpenAI figures it out.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TurnDetection {
+    /// The turn detection kind. T
+    #[serde(rename = "type")]
+    kind: Option<TurnDetectionKind>,
+    threshold: Option<f64>,
+    prefix_padding_ms: Option<u64>,
+    silence_duration_ms: Option<u64>,
+    create_response: Option<bool>,
+}
+
+impl TurnDetection {
+    /// Creates a new TurnDetection config with defaults from the OpenAI examples.
+    pub fn with_openai_defaults() -> Self {
+        Self {
+            kind: Some(TurnDetectionKind::ServerVad),
+            threshold: Some(0.5),
+            prefix_padding_ms: Some(300),
+            silence_duration_ms: Some(500),
+            create_response: Some(true),
+        }
+    }
+
+    /// Creates a new empty TurnDetection config.
+    pub fn empty() -> Self {
+        Self {
+            kind: Some(TurnDetectionKind::ServerVad),
+            threshold: None,
+            prefix_padding_ms: None,
+            silence_duration_ms: None,
+            create_response: None,
+        }
+    }
+
+    /// Add a dB threshold to your turn detection (OpenAI will use this to figure out what sound threshold to start detecting when the LLM's turn is)
+    pub fn threshold(mut self, threshold: f64) -> Self {
+        self.threshold = Some(threshold);
+        self
+    }
+
+    /// Add a grace duration during which there will be padding (ie no audio).
+    pub fn prefix_padding_ms(mut self, prefix_padding_ms: u64) -> Self {
+        self.prefix_padding_ms = Some(prefix_padding_ms);
+        self
+    }
+
+    /// Add a duration for which silence is required (ie the threshold needs to be met or exceeded) for OpenAI turn detection.
+    pub fn silence_duration_ms(mut self, silence_duration_ms: u64) -> Self {
+        self.silence_duration_ms = Some(silence_duration_ms);
+        self
+    }
+
+    /// Whether or not a response should be created. This should be true by default if you are initialising a session.
+    pub fn create_response(mut self, create_response: bool) -> Self {
+        self.create_response = Some(create_response);
+        self
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TurnDetectionKind {
+    #[serde(rename = "server_vad")]
+    #[default]
+    ServerVad,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
