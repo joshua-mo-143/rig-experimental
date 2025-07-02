@@ -1,5 +1,7 @@
 use rig::OneOrMany;
-use rig::client::{AsEmbeddings, AsTranscription, CompletionClient, ProviderClient};
+use rig::client::{
+    AsAudioGeneration, AsEmbeddings, AsTranscription, CompletionClient, ProviderClient,
+};
 use rig::message::{AssistantContent, Message, Text, UserContent};
 use serde::Deserialize;
 use serde::de::Deserializer;
@@ -392,13 +394,6 @@ where
     }
 }
 
-// impl_conversion_traits!(
-//     AsEmbeddings,
-//     AsTranscription,
-//     AsAudioGeneration,
-//     AsImageGeneration for Client
-// );
-//
 impl<T> AsEmbeddings for Client<T>
 where
     T: CandleModel + std::fmt::Debug + Clone + Send + Sync,
@@ -415,6 +410,29 @@ where
     fn as_transcription(
         &self,
     ) -> Option<Box<dyn rig::client::transcription::TranscriptionClientDyn>> {
+        None
+    }
+}
+
+impl<T> AsAudioGeneration for Client<T>
+where
+    T: CandleModel + std::fmt::Debug + Clone + Send + Sync,
+{
+    fn as_audio_generation(
+        &self,
+    ) -> Option<Box<dyn rig::client::audio_generation::AudioGenerationClientDyn>> {
+        None
+    }
+}
+
+#[cfg(feature = "image")]
+impl<T> AsImageGeneration for Client<T>
+where
+    T: CandleModel + std::fmt::Debug + Clone + Send + Sync,
+{
+    fn as_image_generation(
+        &self,
+    ) -> Option<Box<dyn rig::client::image_generation::ImageGenerationClientDyn>> {
         None
     }
 }

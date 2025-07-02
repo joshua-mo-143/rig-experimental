@@ -31,9 +31,10 @@ impl Client {
         path: &str,
     ) -> Result<reqwest_websocket::WebSocket, reqwest_websocket::Error> {
         let url = format!("{base_url}{path}", base_url = self.base_url);
+
         let response = self
             .http_client
-            .post(url)
+            .get(url)
             .bearer_auth(&self.api_key)
             .header("OpenAI-Beta", "realtime=v1")
             .upgrade()
