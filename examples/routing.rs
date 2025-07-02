@@ -21,7 +21,7 @@ struct WordDefinition {
 }
 
 // Your existing SemanticRouter structure
-use rig_extra::routing::SemanticRouter;
+use rig_experimental::routing::SemanticRouter;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {

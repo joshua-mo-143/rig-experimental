@@ -1,5 +1,5 @@
 use rig::client::{ProviderClient, audio_generation::AudioGenerationClientDyn};
-use rig_extra::providers::elevenlabs::{self, ELEVEN_MULTILINGUAL_V2};
+use rig_experimental::providers::elevenlabs::{self, ELEVEN_MULTILINGUAL_V2};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

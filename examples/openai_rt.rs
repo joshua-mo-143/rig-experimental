@@ -11,11 +11,11 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use futures::StreamExt;
 use hound::{SampleFormat, WavSpec, WavWriter};
-use rig_extra::providers::openai_realtime::realtime::{
+use rig_experimental::providers::openai_realtime::realtime::{
     AudioFormat, GPT_4O_REALTIME_PREVIEW_20250603, InputEvent, Modality, ReceivedEventKind,
     ReceivedItemEventKind, Session, SessionEvent,
 };
-use rig_extra::providers::openai_realtime::{
+use rig_experimental::providers::openai_realtime::{
     Client,
     realtime::{RealtimeClient, RealtimeVoice, RealtimeVoiceRequest},
 };
