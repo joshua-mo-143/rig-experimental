@@ -1,4 +1,4 @@
-# rig-extra
+# rig-experimental
 A companion crate for [`rig`](https://github.com/0xPlaygrounds/rig) that offers some helpful extras you may need for your agentic AI pipelines.
 
 This is mostly an experimental crate, so expect to see things break.
