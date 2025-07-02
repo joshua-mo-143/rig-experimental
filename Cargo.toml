@@ -1,6 +1,11 @@
 [package]
 name = "rig-extra"
-version = "0.0.0"
+version = "0.0.1"
+license = "MIT"
+homepage = "https://github.com/joshua-mo-143/rig-extra"
+repository = "https://github.com/joshua-mo-143/rig-extra"
+description = "An experimental companion crate for `rig`, the agentic AI framework for building modular, lightweight agents."
+keywords = ["agents", "ai", "llms"]
 edition = "2024"
 
 [[example]]
