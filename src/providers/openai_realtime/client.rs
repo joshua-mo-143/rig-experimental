@@ -1,14 +1,25 @@
 use reqwest_websocket::RequestBuilderExt;
+use std::fmt;
 
 use super::realtime::{RealtimeClient, RealtimeModel};
 
 const OPENAI_WSS_BASE_URL: &str = "wss://api.openai.com/v1";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
     api_key: String,
     base_url: String,
     http_client: reqwest::Client,
+}
+
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("api_key", b"<REDACTED>")
+            .field("base_url", &self.base_url)
+            .field("http_client", &self.http_client)
+            .finish()
+    }
 }
 
 impl Client {
