@@ -17,7 +17,11 @@ name = "elevenlabs"
 required-features = []
 
 [[example]]
-name = "openai_rt"
+name = "openai_rt_cpal"
+required-features = []
+
+[[example]]
+name = "openai_rt_simple"
 required-features = []
 
 [[example]]
@@ -48,9 +52,13 @@ reqwest-websocket = { version = "0.5.0", features = ["json"], optional = true }
 
 [dev-dependencies]
 base64 = "0.22.1"
+bytemuck = "1.23.1"
 byteorder = "1.5.0"
+cpal = "0.16.0"
 hound = "3.5.1"
 rig-core = { version = "0.13.0", features = ["derive"] }
+ringbuf = "0.4.8"
+rodio = "0.20.1"
 tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3.19", features = ["fmt"] }
 
