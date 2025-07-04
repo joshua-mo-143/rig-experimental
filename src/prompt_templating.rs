@@ -12,6 +12,8 @@ use tera::Context;
 ///
 /// Usage:
 /// ```rust
+/// use rig_experimental::PromptTemplate;
+///
 /// let str = "Hello {{ user }}!";
 ///
 /// let template = PromptTemplate::new(str)
@@ -79,7 +81,7 @@ impl PromptTemplate {
 
 /// A helper trait to make it easier to idiomatically convert types into custom types that can easily use prompt templating.
 pub trait PromptTemplating<T> {
-    fn into_prompt_template(self, template: &str) -> PromptTemplatingWrapper<T>;
+    fn with_prompt_template(self, template: &str) -> PromptTemplatingWrapper<T>;
 }
 
 /// A prompt templating wrapper (that wraps over a type).
@@ -117,7 +119,7 @@ impl<M> PromptTemplating<Agent<M>> for Agent<M>
 where
     M: CompletionModel + 'static,
 {
-    fn into_prompt_template(self, template: &str) -> PromptTemplatingWrapper<Agent<M>> {
+    fn with_prompt_template(self, template: &str) -> PromptTemplatingWrapper<Agent<M>> {
         PromptTemplatingWrapper {
             template: PromptTemplate::new(template),
             inner: self,
@@ -148,5 +150,18 @@ where
         let res = self.template.render_to_string();
 
         self.inner.chat(res, message_history).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::PromptTemplate;
+
+    #[test]
+    fn prompt_template_works() {
+        let res = PromptTemplate::new("Hello, {{user}}!")
+            .with_variable("user", "world")
+            .render_to_string();
+        assert_eq!(res, "Hello, world!");
     }
 }
