@@ -67,6 +67,7 @@ candle = [
     "dep:tokenizers",
     "dep:serde_json",
 ]
-elevenlabs = ["rig-core/audio", "dep:reqwest"]
+elevenlabs = ["audio", "dep:reqwest"]
 openai_realtime = ["dep:reqwest", "dep:reqwest-websocket"]
 image = ["rig-core/image"]
+audio = ["rig-core/audio"]

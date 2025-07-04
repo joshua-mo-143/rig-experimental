@@ -1,6 +1,7 @@
 use rig::OneOrMany;
 use rig::client::{
-    AsAudioGeneration, AsEmbeddings, AsTranscription, CompletionClient, ProviderClient,
+    AsAudioGeneration, AsEmbeddings, AsImageGeneration, AsTranscription, CompletionClient,
+    ProviderClient,
 };
 use rig::message::{AssistantContent, Message, Text, UserContent};
 use serde::Deserialize;
@@ -414,6 +415,7 @@ where
     }
 }
 
+#[cfg(feature = "audio")]
 impl<T> AsAudioGeneration for Client<T>
 where
     T: CandleModel + std::fmt::Debug + Clone + Send + Sync,
