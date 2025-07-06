@@ -2,9 +2,9 @@
 //! This example uses OpenAI's Speech Activity Detection and as such does not need to manually commit audio buffers (by sending the relevant input event).
 use cpal::Stream;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use rodio::buffer::SamplesBuffer;
-use rodio::{OutputStream, Sink};
+use rodio::{OutputStream, Sink, Source};
 use rubato::{FftFixedInOut, Resampler};
+use std::{collections::VecDeque, time::Duration};
 
 use std::sync::Arc;
 
@@ -52,22 +52,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    println!("Waiting for events...");
+    // Set up audio playback stuff
+    let (_stream, stream_handle) = OutputStream::try_default()?;
+    let sink = Sink::try_new(&stream_handle)?;
 
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        sender.send(InputEvent::commit_audio()).await.unwrap();
-    });
+    let (source, buffer) = StreamingSource::new(1, 24000);
+    sink.append(source);
 
     while let Some(evt) = stream.next().await {
-        println!("Recieved data: {evt:?}");
         match evt.data {
             ReceivedEventKind::Item {
                 data: ReceivedItemEventKind::AudioDelta { delta },
                 ..
             } => {
                 let bytes = BASE64_STANDARD.decode(delta).unwrap();
-                play_audio(bytes).unwrap();
+                let samples: &[i16] = bytemuck::cast_slice(&bytes);
+                let mut guard = buffer.lock().await;
+                guard.extend(samples);
             }
             ReceivedEventKind::Session(SessionEvent::SessionUpdated { session }) => {
                 // println!("Updated session: {session:?}");
@@ -106,7 +107,6 @@ pub async fn record_audio(raw_tx: tokio::sync::mpsc::Sender<String>) -> anyhow::
                 .expect("Failed to init resampler");
 
         while let Ok(mono_chunk) = audio_rx.recv() {
-            println!("Received chunks");
             let input = vec![mono_chunk];
             let Ok(resampled) = resampler.process(&input, None) else {
                 continue;
@@ -134,13 +134,11 @@ pub async fn record_audio(raw_tx: tokio::sync::mpsc::Sender<String>) -> anyhow::
             device.build_input_stream(
                 &config.into(),
                 move |data: &[f32], _| {
-                    println!("Got chunks!");
                     let mut mono: Vec<f32> = Vec::with_capacity(data.len() / channels);
                     for frame in data.chunks(channels) {
                         let avg = frame.iter().sum::<f32>() / channels as f32;
                         mono.push(avg);
                     }
-                    println!("Sending chunks...");
 
                     let _ = audio_tx.send(mono); // don't block
                 },
@@ -154,14 +152,53 @@ pub async fn record_audio(raw_tx: tokio::sync::mpsc::Sender<String>) -> anyhow::
     Ok(stream)
 }
 
-fn play_audio(bytes: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let (_stream, stream_handle) = OutputStream::try_default()?;
-    let sink = Sink::try_new(&stream_handle)?;
+/// A streaming source.
+/// Trying to play the raw bytes as they come can have choppy audio issues due to not buffering the bytes as they come in,
+/// resulting in choppy audio.
+/// By essentially queueing bytes, we can ensure that we have one continuous audio stream.
+pub struct StreamingSource {
+    buffer: std::sync::Arc<tokio::sync::Mutex<VecDeque<i16>>>,
+    channels: u16,
+    sample_rate: u32,
+}
 
-    let samples: &[i16] = bytemuck::cast_slice(&bytes);
-    let source = SamplesBuffer::new(1, 24_000, samples.to_vec());
-    sink.append(source);
+impl StreamingSource {
+    pub fn new(channels: u16, sample_rate: u32) -> (Self, Arc<tokio::sync::Mutex<VecDeque<i16>>>) {
+        let buffer = Arc::new(tokio::sync::Mutex::new(VecDeque::new()));
+        (
+            Self {
+                buffer: Arc::clone(&buffer),
+                channels,
+                sample_rate,
+            },
+            buffer,
+        )
+    }
+}
 
-    sink.sleep_until_end(); // Wait until playback finishes
-    Ok(())
+impl Iterator for StreamingSource {
+    type Item = i16;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut guard = self.buffer.try_lock().ok()?;
+        guard.pop_front().or(Some(0)) // Return silence on underrun
+    }
+}
+
+impl Source for StreamingSource {
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+
+    fn channels(&self) -> u16 {
+        self.channels
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn total_duration(&self) -> Option<Duration> {
+        None
+    }
 }
