@@ -85,12 +85,13 @@ impl AudioGenerationClient for Client {
     ///
     /// # Example
     /// ```
-    /// use rig::providers::openai::{Client, self};
+    /// use rig_experimental::providers::elevenlabs::{Client, self};
+    /// use rig::client::AudioGenerationClient;
     ///
-    /// // Initialize the OpenAI client
-    /// let openai = Client::new("your-open-ai-api-key");
+    /// // Initialize the ElevenLabs client
+    /// let elevenlabs = Client::new("your-elevenlabs-api-key");
     ///
-    /// let gpt4 = openai.audio_generation_model(openai::TTS_1);
+    /// let model = openai.audio_generation_model(elevenlabs::ELEVEN_MULTILINGUAL_V2);
     /// ```
     fn audio_generation_model(&self, model: &str) -> Self::AudioGenerationModel {
         AudioGenerationModel::new(self.clone(), model)
