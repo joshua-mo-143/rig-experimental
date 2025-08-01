@@ -3,9 +3,9 @@ use rig_experimental::providers::elevenlabs::{self, ELEVEN_MULTILINGUAL_V2};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let elevenlabs_client = elevenlabs::Client::from_env();
+    let elevenlabs_client = elevenlabs::audiogen::Client::from_env();
 
-    let params = elevenlabs::ElevenLabsParams::default().into_json()?;
+    let params = elevenlabs::audiogen::ElevenLabsParams::default().into_json()?;
     let res = elevenlabs_client
         .audio_generation_model(ELEVEN_MULTILINGUAL_V2)
         .audio_generation_request()

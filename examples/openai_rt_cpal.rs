@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let req = RealtimeVoiceRequest::with_session(session);
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+    let (tx, mut rx) = tokio::sync::mpsc::channel(50);
     let input_stream = record_audio(tx).await.expect("Audio stream setup failed");
     input_stream.play()?;
 
