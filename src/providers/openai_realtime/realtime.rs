@@ -263,6 +263,11 @@ impl Session {
         self
     }
 
+    pub fn instructions(mut self, instructions: &str) -> Self {
+        self.instructions = Some(instructions.to_string());
+        self
+    }
+
     pub fn turn_detection(mut self, cfg: TurnDetection) -> Self {
         self.turn_detection = Some(cfg);
         self
